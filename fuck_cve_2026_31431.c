@@ -13,7 +13,7 @@
 #include <linux/net.h>
 #include <net/sock.h>
 
-#define FAKE_ERROR ENOMEM
+#define FAKE_ERROR ENOENT
 
 static void *fuck_bind(const char *name, u32 type, u32 mask)
 {
@@ -112,21 +112,34 @@ static const struct af_alg_type algif_fuck_cve_2026_31431 = {
 	.owner		=	THIS_MODULE
 };
 
+static int reg_fake_impl = 0;
+
 static int __init fuck_cve_2026_31431_init(void)
 {
-    pr_info("Try to remove algif_aead");
-    int err = af_alg_unregister_type(&algif_fuck_cve_2026_31431);
-    pr_info("Remove algif_aead: %d", err);
-	return af_alg_register_type(&algif_fuck_cve_2026_31431);
+	int err = af_alg_unregister_type(&algif_fuck_cve_2026_31431);
+	pr_info("Remove insecure algif_aead implement: %d", err);
+
+	if (reg_fake_impl) {
+		pr_info("register fake implement to avoid load");
+		return af_alg_register_type(&algif_fuck_cve_2026_31431);
+	}
+	return 0;
 }
 
 static void __exit fuck_cve_2026_31431_exit(void)
 {
-    int err = af_alg_unregister_type(&algif_fuck_cve_2026_31431);
-	BUG_ON(err);
+	if (reg_fake_impl) {
+		// int err = 
+		// best effort to remove
+		af_alg_unregister_type(&algif_fuck_cve_2026_31431);
+		// BUG_ON(err);
+	}
 }
 
 module_init(fuck_cve_2026_31431_init);
 module_exit(fuck_cve_2026_31431_exit);
+
+module_param(reg_fake_impl, int, 0644);
+MODULE_PARM_DESC(reg_fake_impl, "register a fake implement to avoid load, default=0");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Fuck algif_aead for CVE-2026-31431");
